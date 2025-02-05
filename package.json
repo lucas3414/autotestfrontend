@@ -20,6 +20,7 @@
     "element-plus": "^2.1.11",
     "js-base64": "^3.7.2",
     "jsmind": "^0.6.4",
+    "lodash-es": "^4.17.21",
     "markmap-common": "^0.15.0",
     "markmap-lib": "^0.15.2",
     "markmap-toolbar": "^0.15.0",
