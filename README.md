@@ -1,1 +1,2 @@
-"# autotestfrontend" 
+npm i 
+npm run dev
