@@ -37,7 +37,7 @@
     </div>
   </el-card>
   <el-card shadow="never">
-    <el-table :data="case_list"  :header-cell-style="{ backgroundColor: '#ecf5ff' }"
+    <el-table :data="case_list" id="dragTable" :header-cell-style="{ backgroundColor: '#ecf5ff' }"
               :cell-style="cellStyle" border stripe style="width: 100%">
       <el-table-column type="selection" width="50"/>
       <el-table-column label="序号" type="index" width="60"/>
@@ -93,12 +93,26 @@
 </template>
 
 <script setup>
+import Sortable from 'sortablejs'
+import { cloneDeep } from 'lodash-es'
+function setSort() {
+  const el = document.querySelector('#dragTable table tbody')
+  new Sortable(el, {
+    sort: true,
+    ghostClass: 'sortable-ghost',
+    onEnd: (e) => {
+      const targetRow = case_list.value.splice(e.oldIndex, 1)[0]
+      case_list.value.splice(e.newIndex, 0, targetRow)
+      console.log(case_list.value)
+    },
+  })
+}
 
 import {onMounted, ref} from "vue";
 import {RunCase} from "@/api/modules"
 import DynamicForm from "./components/DynamicForm.vue";
 import {options} from "@/views/system/CaseStep/options";
-import { cloneDeep } from 'lodash-es'
+
 const queryData = ref({
   keyWord: '',
   page: 1,
@@ -208,6 +222,16 @@ const SendKeysByXpathMethodName = (caseStepData, formItems, arg1, arg2) => {
   })
 }
 const WebDriverQuitMethodName = (caseStepData, formItems) => {
+  caseStepData.value.example = `浏览器退出, WebDriverQuit()`
+  formItems.value.forEach((item) => {
+    if (item.prop === 'arg1' || item.prop === 'arg2' || item.prop === 'arg3' || item.prop === 'arg4' || item.prop === 'arg5') {
+      item.disabled = true
+      item.rules = []
+      item.style = "display: none"
+    }
+  })
+}
+const MoveX = (caseStepData, formItems) => {
   caseStepData.value.example = `浏览器退出, WebDriverQuit()`
   formItems.value.forEach((item) => {
     if (item.prop === 'arg1' || item.prop === 'arg2' || item.prop === 'arg3' || item.prop === 'arg4' || item.prop === 'arg5') {
@@ -649,6 +673,9 @@ const setMethod = (methodName, caseStepData, formItems, arg1, arg2, arg3) => {
   if (caseStepData.value.method_name === 'WebDriverQuit') {
     WebDriverQuitMethodName(caseStepData, formItems, arg1, arg2)
   }
+  if (caseStepData.value.method_name === 'MoveX') {
+    WebDriverQuitMethodName(caseStepData, formItems, arg1, arg2)
+  }
   if (caseStepData.value.method_name === 'ElementSleep') {
     ElementSleepMethodName(caseStepData, formItems, arg1, arg2)
   }
@@ -719,6 +746,10 @@ const methodNameOptions = [
   {
     id: 'WebDriverQuit',
     name: '关闭浏览器',
+  },
+  {
+    id: 'MoveX',
+    name: '移动测试',
   },
   {
     id: 'ElementSleep',
@@ -818,11 +849,18 @@ function onSubmit() {
     caseStepData.value.args.push(caseStepData.value.arg3)
   }
 
-  if (dialogVisibleAdd.value && (!isEditeDialog.value || isCloneDialog.value)) {
+  // if (dialogVisibleAdd.value && (!isEditeDialog.value || isCloneDialog.value)) {
+  //   case_list.value.push(caseStepData.value)
+  // }
+  if (dialogVisibleAdd.value && isCloneDialog.value && !isEditeDialog.value) {
     case_list.value.push(caseStepData.value)
-
+  }
+  if (dialogVisibleAdd.value && !isCloneDialog.value && !isEditeDialog.value) {
+    case_list.value.push(caseStepData.value)
   }
   dialogVisibleAdd.value = false
+  isCloneDialog.value = false
+  isEditeDialog.value = false
 }
 
 
@@ -951,6 +989,7 @@ const dialogVisibleAddShow = () => {
   title.value = "新增"
   dialogVisibleAdd.value = true
   isEditeDialog.value = false
+  isCloneDialog.value = false
   caseStepData.value = Object.assign({}, {});
   caseStepData.value.start_time = ""
   caseStepData.value.end_time = ""
@@ -965,6 +1004,7 @@ const EditeItem = (index) => {
   title.value = "编辑"
   isEditeDialog.value = true
   dialogVisibleAdd.value = true
+  isCloneDialog.value = false
   caseStepData.value = index.row
   if (index.row.arg1 === undefined) {
     index.row.arg1 = ''
@@ -981,20 +1021,19 @@ const EditeItem = (index) => {
 const CloneItem = (index) => {
   title.value = "克隆"
   isCloneDialog.value = true
+  isEditeDialog.value = false
   dialogVisibleAdd.value = true
   caseStepData.value = cloneDeep(index.row)
-
-
-  if (caseStepData.value.arg1 === undefined) {
+  if (index.row.arg1 === undefined) {
     index.row.arg1 = ''
   }
-  if (caseStepData.value.arg2 === undefined) {
+  if (index.row.arg2 === undefined) {
     index.row.arg2 = ''
   }
-  if (caseStepData.value.arg3 === undefined) {
+  if (index.row.arg3 === undefined) {
     index.row.arg3 = ''
   }
-  setMethod(caseStepData.value.method_name, caseStepData, formItems, index.row.arg1, index.row.arg2,index.row.arg3)
+  setMethod(caseStepData.value.method_name, caseStepData, formItems, index.row.arg1, index.row.arg2, index.row.arg3)
 
 }
 const case_list = ref([
@@ -1004,7 +1043,6 @@ const case_list = ref([
     "case_break": "false",
     "end_time": "",
     "file": "",
-    "id": 1,
     "method_name": "WebDriverOpenUrl",
     "msg": "",
     "result": "",
@@ -1015,7 +1053,6 @@ const case_list = ref([
     "case_break": "false",
     "end_time": "",
     "file": "",
-    "id": 2,
     "method_name": "WebDriverMaximizeWindow",
     "msg": "",
     "result": "",
@@ -1027,7 +1064,6 @@ const case_list = ref([
     "case_break": "false",
     "end_time": "",
     "file": "",
-    "id": 3,
     "method_name": "SendKeysByXpath",
     "msg": "",
     "result": "",
@@ -1039,7 +1075,6 @@ const case_list = ref([
     "case_break": "true",
     "end_time": "",
     "file": "",
-    "id": 4,
     "method_name": "SendKeysByXpath",
     "msg": "",
     "result": "",
@@ -1051,7 +1086,6 @@ const case_list = ref([
     "case_break": "false",
     "end_time": "",
     "file": "",
-    "id": 5,
     "method_name": "SendKeysByXpath",
     "msg": "",
     "result": "",
@@ -1063,7 +1097,6 @@ const case_list = ref([
     "case_break": "false",
     "end_time": "",
     "file": "",
-    "id": 6,
     "method_name": "ElementAssert",
     "msg": "",
     "result": "",
@@ -1075,7 +1108,6 @@ const case_list = ref([
     "case_break": "false",
     "end_time": "",
     "file": "",
-    "id": 7,
     "method_name": "ClickByXpath",
     "msg": "",
     "result": "",
@@ -1086,7 +1118,6 @@ const case_list = ref([
     "case_break": "false",
     "end_time": "",
     "file": "",
-    "id": 8,
     "method_name": "ElementSleep",
     "msg": "",
     "result": "",
@@ -1347,7 +1378,7 @@ const setDialogWidth = () => {
 }
 
 onMounted(() => {
-  // setSort()
+  setSort()
   setDialogWidth()
   window.onresize = () => {
     return (() => {
